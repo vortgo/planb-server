@@ -74,6 +74,19 @@ function SafeZoneRadio.OnEveryHour(_channel, _gametime, _radio)
     -- обязательный callback для DynamicRadio.scripts (вызывается ванильным ISDynamicRadio)
 end
 
+SafeZoneRadio.placeholders = {
+    ["{x}"]    = "13050",
+    ["{y}"]    = "9750",
+    ["{freq}"] = "95.2",
+}
+
+local function replacePlaceholders(msg)
+    for placeholder, value in pairs(SafeZoneRadio.placeholders) do
+        msg = msg:gsub(placeholder, value)
+    end
+    return msg
+end
+
 function SafeZoneRadio.CreateBroadcast()
     local bc = RadioBroadCast.new("SZ-" .. tostring(ZombRand(100000, 999999)), -1, -1)
 
@@ -81,7 +94,7 @@ function SafeZoneRadio.CreateBroadcast()
 
     local msgs = SafeZoneRadio.messages
     if #msgs > 0 then
-        local msg = msgs[ZombRand(#msgs) + 1]
+        local msg = replacePlaceholders(msgs[ZombRand(#msgs) + 1])
         bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.8, 0.2))
     end
 
