@@ -2,12 +2,12 @@ SafeZoneRadio = {}
 SafeZoneRadio.channelUUID = "SZ-EVENTS-001"
 SafeZoneRadio.frequency = 95200 -- 95.2 MHz
 
-SafeZoneRadio.messageKeys = {
-    "SZR_Msg1",
-    "SZR_Msg2",
-    "SZR_Msg3",
-    "SZR_Msg4",
-    "SZR_Msg5",
+SafeZoneRadio.messages = {
+    "Внимание всем выжившим. Безопасная зона работает. Координаты: 13050, 9750.",
+    "Периметр защищён. Ящики снабжения доступны в безопасной зоне.",
+    "Всем выжившим — двигайтесь на северо-запад, к старой военной базе. Стены держатся.",
+    "Это трансляция SafeZone. У нас есть укрытие, припасы и оборона. Вы не одни.",
+    "Патруль докладывает: прорывов нет. Безопасная зона в порядке. Оставайтесь на частоте.",
 }
 
 function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
@@ -36,13 +36,9 @@ function SafeZoneRadio.CreateBroadcast()
 
     bc:AddRadioLine(RadioLine.new("<bzzt>", 0.5, 0.5, 0.5))
 
-    local keys = SafeZoneRadio.messageKeys
-    if #keys > 0 then
-        local key = keys[ZombRand(#keys) + 1]
-        local msg = getRadioText(key)
-        if msg == key then
-            print("[SafeZoneRadio] WARN: translation not found for key: " .. key)
-        end
+    local msgs = SafeZoneRadio.messages
+    if #msgs > 0 then
+        local msg = msgs[ZombRand(#msgs) + 1]
         bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.8, 0.2))
     end
 
