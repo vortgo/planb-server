@@ -2,12 +2,12 @@ SafeZoneRadio = {}
 SafeZoneRadio.channelUUID = "SZ-EVENTS-001"
 SafeZoneRadio.frequency = 95200 -- 95.2 MHz
 
-SafeZoneRadio.messageKeys = {
-    "IGUI_SZR_Msg1",
-    "IGUI_SZR_Msg2",
-    "IGUI_SZR_Msg3",
-    "IGUI_SZR_Msg4",
-    "IGUI_SZR_Msg5",
+SafeZoneRadio.messages = {
+    "Attention all survivors. Safe zone is operational. Coordinates: 13050, 9750.",
+    "Perimeter secured. Supply crates available at the safe zone.",
+    "All survivors - head northwest toward the old military base. Walls are holding.",
+    "This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.",
+    "Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates.",
 }
 
 function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
@@ -36,10 +36,10 @@ function SafeZoneRadio.CreateBroadcast()
 
     bc:AddRadioLine(RadioLine.new("<bzzt>", 0.5, 0.5, 0.5))
 
-    local keys = SafeZoneRadio.messageKeys
-    if #keys > 0 then
-        local key = keys[ZombRand(#keys) + 1]
-        bc:AddRadioLine(RadioLine.new(getText(key), 1.0, 0.8, 0.2))
+    local msgs = SafeZoneRadio.messages
+    if #msgs > 0 then
+        local msg = msgs[ZombRand(#msgs) + 1]
+        bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.8, 0.2))
     end
 
     bc:AddRadioLine(RadioLine.new("<fzzt>", 0.5, 0.5, 0.5))
