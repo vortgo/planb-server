@@ -1,0 +1,11 @@
+{
+    "IGUI_SafeZone_NoteName": "Crumpled Note",
+    "IGUI_SafeZone_NoteText": "If you're reading this, you're still alive. There is a safe zone to the northwest, near the old military base. Walls, supplies, and people who still give a damn. Coordinates: %1, %2. Don't wait - fewer chances after dark.",
+
+    "IGUI_StarterKit_Claim": "Claim Starter Kit",
+    "IGUI_StarterKit_Place": "Place Supply Crate",
+    "IGUI_StarterKit_Remove": "Remove Supply Crate",
+    "IGUI_StarterKit_Received": "Starter kit received!",
+    "IGUI_StarterKit_AlreadyReceived": "You already received the starter kit",
+    "IGUI_StarterKit_Cooldown": "Next kit available in %1 hours"
+}
