@@ -6,7 +6,7 @@ SafeZoneRadio.messages = {}
 local MESSAGES_FILE = "SafeZone_radio_messages.txt"
 
 -------------------------------------------------
--- Загрузка/создание файла сообщений в Zomboid/
+-- Загрузка/создание файла сообщений в Zomboid/Lua/
 -------------------------------------------------
 
 local function writeDefaultMessages()
@@ -18,7 +18,7 @@ local function writeDefaultMessages()
     writer:write("This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.\n")
     writer:write("Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates.\n")
     writer:close()
-    print("[SafeZoneRadio] Created default " .. MESSAGES_FILE .. " in Zomboid/ folder")
+    print("[SafeZoneRadio] Created default " .. MESSAGES_FILE .. " in Zomboid/Lua/ folder")
     print("[SafeZoneRadio] Edit this file to customize radio messages (supports Cyrillic/UTF-8)")
 end
 
