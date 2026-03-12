@@ -1,14 +1,39 @@
 SafeZoneRadio = {}
 SafeZoneRadio.channelUUID = "SZ-EVENTS-001"
 SafeZoneRadio.frequency = 95200 -- 95.2 MHz
+SafeZoneRadio.messages = {}
 
-SafeZoneRadio.messages = {
-    "Attention all survivors. Safe zone is operational. Coordinates: 13050, 9750.",
-    "Perimeter secured. Supply crates available at the safe zone.",
-    "All survivors - head northwest toward the old military base. Walls are holding.",
-    "This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.",
-    "Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates.",
-}
+-------------------------------------------------
+-- Загрузка сообщений из JSON (UTF-8 кириллица)
+-------------------------------------------------
+
+local function loadMessages()
+    local reader = getFileReader("media/lua/server/radio/radio_messages.json", false)
+    if not reader then
+        print("[SafeZoneRadio] WARN: radio_messages.json not found")
+        return
+    end
+
+    local lines = {}
+    local line = reader:readLine()
+    while line do
+        table.insert(lines, line)
+        line = reader:readLine()
+    end
+    reader:close()
+
+    local raw = table.concat(lines, "\n")
+    -- простой парсинг JSON-массива строк
+    for msg in raw:gmatch('"([^"]+)"') do
+        table.insert(SafeZoneRadio.messages, msg)
+    end
+
+    print("[SafeZoneRadio] Loaded " .. #SafeZoneRadio.messages .. " radio messages")
+end
+
+-------------------------------------------------
+-- Радиоканал
+-------------------------------------------------
 
 function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
     local channel = DynamicRadioChannel.new(
@@ -22,6 +47,8 @@ function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
 
     DynamicRadio.cache[SafeZoneRadio.channelUUID] = channel
     table.insert(DynamicRadio.scripts, SafeZoneRadio)
+
+    loadMessages()
 
     local bc = SafeZoneRadio.CreateBroadcast()
     channel:setAiringBroadcast(bc)
