@@ -7,5 +7,11 @@
     "IGUI_StarterKit_Remove": "Remove Supply Crate",
     "IGUI_StarterKit_Received": "Starter kit received!",
     "IGUI_StarterKit_AlreadyReceived": "You already received the starter kit",
-    "IGUI_StarterKit_Cooldown": "Next kit available in %1 hours"
+    "IGUI_StarterKit_Cooldown": "Next kit available in %1 hours",
+
+    "IGUI_SZR_Msg1": "Attention all survivors. Safe zone is operational. Coordinates: 13050, 9750.",
+    "IGUI_SZR_Msg2": "Perimeter secured. Supply crates available at the safe zone.",
+    "IGUI_SZR_Msg3": "All survivors - head northwest toward the old military base. Walls are holding.",
+    "IGUI_SZR_Msg4": "This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.",
+    "IGUI_SZR_Msg5": "Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates."
 }
