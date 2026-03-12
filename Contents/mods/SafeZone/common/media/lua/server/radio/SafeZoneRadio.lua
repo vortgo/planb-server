@@ -2,15 +2,12 @@ SafeZoneRadio = {}
 SafeZoneRadio.channelUUID = "SZ-EVENTS-001"
 SafeZoneRadio.frequency = 95200 -- 95.2 MHz
 
-SafeZoneRadio.messageKeys = {
-    "SZR_Test1",
-    "SZR_Test2",
-    "SZR_Test3",
-    "SZR_Test4",
-    "SZR_Test5",
-    "SZR_Test6",
-    "SZR_Test7",
-    "SZR_Test8",
+SafeZoneRadio.messages = {
+    "Attention all survivors. Safe zone is operational. Coordinates: 13050, 9750.",
+    "Perimeter secured. Supply crates available at the safe zone.",
+    "All survivors — head northwest toward the old military base. Walls are holding.",
+    "This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.",
+    "Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates.",
 }
 
 function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
@@ -31,8 +28,7 @@ function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
 end
 
 function SafeZoneRadio.OnEveryHour(_channel, _gametime, _radio)
-    local bc = SafeZoneRadio.CreateBroadcast()
-    _channel:setAiringBroadcast(bc)
+    -- обязательный callback для DynamicRadio.scripts (вызывается ванильным ISDynamicRadio)
 end
 
 function SafeZoneRadio.CreateBroadcast()
@@ -40,8 +36,10 @@ function SafeZoneRadio.CreateBroadcast()
 
     bc:AddRadioLine(RadioLine.new("<bzzt>", 0.5, 0.5, 0.5))
 
-    for _, key in ipairs(SafeZoneRadio.messageKeys) do
-        bc:AddRadioLine(RadioLine.new(getRadioText(key), 1.0, 0.8, 0.2))
+    local msgs = SafeZoneRadio.messages
+    if #msgs > 0 then
+        local msg = msgs[ZombRand(#msgs) + 1]
+        bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.8, 0.2))
     end
 
     bc:AddRadioLine(RadioLine.new("<fzzt>", 0.5, 0.5, 0.5))
@@ -50,6 +48,20 @@ function SafeZoneRadio.CreateBroadcast()
 end
 
 Events.OnLoadRadioScripts.Add(SafeZoneRadio.OnLoadRadioScripts)
+
+-------------------------------------------------
+-- Автотрансляция каждые 10 игровых минут
+-------------------------------------------------
+
+local function onEveryTenMinutes()
+    local channel = DynamicRadio.cache[SafeZoneRadio.channelUUID]
+    if not channel then return end
+
+    local bc = SafeZoneRadio.CreateBroadcast()
+    channel:setAiringBroadcast(bc)
+end
+
+Events.EveryTenMinutes.Add(onEveryTenMinutes)
 
 -------------------------------------------------
 -- /radio <freq> <text> — админская команда
