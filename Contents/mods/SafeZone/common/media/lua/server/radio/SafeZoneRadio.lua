@@ -3,11 +3,11 @@ SafeZoneRadio.channelUUID = "SZ-EVENTS-001"
 SafeZoneRadio.frequency = 95200 -- 95.2 MHz
 
 SafeZoneRadio.messages = {
-    "Внимание всем выжившим. Безопасная зона работает. Координаты: 13050, 9750.",
-    "Периметр защищён. Ящики снабжения доступны в безопасной зоне.",
-    "Всем выжившим — двигайтесь на северо-запад, к старой военной базе. Стены держатся.",
-    "Это трансляция SafeZone. У нас есть укрытие, припасы и оборона. Вы не одни.",
-    "Патруль докладывает: прорывов нет. Безопасная зона в порядке. Оставайтесь на частоте.",
+    "Attention all survivors. Safe zone is operational. Coordinates: 13050, 9750.",
+    "Perimeter secured. Supply crates available at the safe zone.",
+    "All survivors - head northwest toward the old military base. Walls are holding.",
+    "This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.",
+    "Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates.",
 }
 
 function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
