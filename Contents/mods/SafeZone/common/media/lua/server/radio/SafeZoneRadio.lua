@@ -39,7 +39,11 @@ function SafeZoneRadio.CreateBroadcast()
     local keys = SafeZoneRadio.messageKeys
     if #keys > 0 then
         local key = keys[ZombRand(#keys) + 1]
-        bc:AddRadioLine(RadioLine.new(getRadioText(key), 1.0, 0.8, 0.2))
+        local msg = getRadioText(key)
+        if msg == key then
+            print("[SafeZoneRadio] WARN: translation not found for key: " .. key)
+        end
+        bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.8, 0.2))
     end
 
     bc:AddRadioLine(RadioLine.new("<fzzt>", 0.5, 0.5, 0.5))
