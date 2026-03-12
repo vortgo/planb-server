@@ -3,32 +3,48 @@ SafeZoneRadio.channelUUID = "SZ-EVENTS-001"
 SafeZoneRadio.frequency = 95200 -- 95.2 MHz
 SafeZoneRadio.messages = {}
 
+local MESSAGES_FILE = "SafeZone_radio_messages.txt"
+
 -------------------------------------------------
--- Загрузка сообщений из JSON (UTF-8 кириллица)
+-- Загрузка/создание файла сообщений в Zomboid/
 -------------------------------------------------
+
+local function writeDefaultMessages()
+    local writer = getFileWriter(MESSAGES_FILE, true, false)
+    if not writer then return end
+    writer:write("Attention all survivors. Safe zone is operational. Coordinates: 13050, 9750.\n")
+    writer:write("Perimeter secured. Supply crates available at the safe zone.\n")
+    writer:write("All survivors - head northwest toward the old military base. Walls are holding.\n")
+    writer:write("This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.\n")
+    writer:write("Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates.\n")
+    writer:close()
+    print("[SafeZoneRadio] Created default " .. MESSAGES_FILE .. " in Zomboid/ folder")
+    print("[SafeZoneRadio] Edit this file to customize radio messages (supports Cyrillic/UTF-8)")
+end
 
 local function loadMessages()
-    local reader = getFileReader("media/lua/server/radio/radio_messages.json", false)
+    local reader = getFileReader(MESSAGES_FILE, true)
     if not reader then
-        print("[SafeZoneRadio] WARN: radio_messages.json not found")
-        return
+        writeDefaultMessages()
+        reader = getFileReader(MESSAGES_FILE, true)
+        if not reader then
+            print("[SafeZoneRadio] ERROR: cannot read " .. MESSAGES_FILE)
+            return
+        end
     end
 
-    local lines = {}
+    SafeZoneRadio.messages = {}
     local line = reader:readLine()
     while line do
-        table.insert(lines, line)
+        line = line:match("^%s*(.-)%s*$") -- trim
+        if line ~= "" then
+            table.insert(SafeZoneRadio.messages, line)
+        end
         line = reader:readLine()
     end
     reader:close()
 
-    local raw = table.concat(lines, "\n")
-    -- простой парсинг JSON-массива строк
-    for msg in raw:gmatch('"([^"]+)"') do
-        table.insert(SafeZoneRadio.messages, msg)
-    end
-
-    print("[SafeZoneRadio] Loaded " .. #SafeZoneRadio.messages .. " radio messages")
+    print("[SafeZoneRadio] Loaded " .. #SafeZoneRadio.messages .. " radio messages from " .. MESSAGES_FILE)
 end
 
 -------------------------------------------------
