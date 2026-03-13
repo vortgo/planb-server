@@ -3,11 +3,11 @@ StarterKitConfig = StarterKitConfig or {}
 -- Кулдаун между выдачами для одного SteamID (в реальных часах)
 StarterKitConfig.cooldownHours = 24
 
--- Спрайт ящика снабжения (ванильный деревянный ящик)
-StarterKitConfig.crateSprite = "carpentry_01_16"
-
--- Спрайт-оверлей (иконка рюкзака над ящиком)
-StarterKitConfig.overlaySprite = "Item_SchoolBag"
+-- Спрайты ящика снабжения (кастомные, 2 ракурса)
+StarterKitConfig.crateSprites = {
+    [0] = "safezone_crate_0",
+    [1] = "safezone_crate_1",
+}
 
 -- Состав стартового набора
 -- item = полный ID предмета

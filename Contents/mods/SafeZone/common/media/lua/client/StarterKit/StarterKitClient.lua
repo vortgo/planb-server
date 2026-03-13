@@ -1,14 +1,11 @@
 StarterKitClient = StarterKitClient or {}
 
--- Локальные константы (не зависим от require)
-local CRATE_SPRITE = "carpentry_01_16"
-
--------------------------------------------------
--- Кеш ящиков и мигание
--------------------------------------------------
-
-local knownCrates = {}
-local glowTimer = 0
+-- Кастомные спрайты из .pack (tiledef зарегистрирован)
+local CRATE_SPRITES = {
+    [0] = "safezone_crate_0",
+    [1] = "safezone_crate_1",
+}
+local crateRotation = 0
 
 -------------------------------------------------
 -- Утилиты
@@ -47,71 +44,6 @@ local function isAdmin(playerObj)
     return level == "Admin" or level == "admin"
 end
 
--------------------------------------------------
--- Мигание золотым для ящиков снабжения
--------------------------------------------------
-
--- Подсветка — вызывается каждый кадр рендера
-local function onRenderTick()
-    if #knownCrates == 0 then return end
-
-    glowTimer = glowTimer + 0.05
-    if glowTimer > 6.2831 then glowTimer = glowTimer - 6.2831 end
-
-    local alpha = 0.15 + 0.45 * (0.5 + 0.5 * math.sin(glowTimer))
-
-    local i = 1
-    while i <= #knownCrates do
-        local obj = knownCrates[i]
-        if not obj or not obj:getSquare() then
-            table.remove(knownCrates, i)
-        else
-            obj:setHighlighted(true, false)
-            obj:setHighlightColor(1.0, 0.85, 0.2, alpha)
-            i = i + 1
-        end
-    end
-end
-
-Events.OnRenderTick.Add(onRenderTick)
-
--- Сканирование — раз в ~секунду ищем ящики рядом с игроком
-local scanTimer = 0
-local function onTick()
-    scanTimer = scanTimer + 1
-    if scanTimer < 60 then return end
-    scanTimer = 0
-
-    local player = getSpecificPlayer(0)
-    if not player then return end
-
-    local px = math.floor(player:getX())
-    local py = math.floor(player:getY())
-    local pz = math.floor(player:getZ())
-    local radius = 20
-
-    for dx = -radius, radius do
-        for dy = -radius, radius do
-            local sq = getCell():getGridSquare(px + dx, py + dy, pz)
-            if sq then
-                for j = 0, sq:getObjects():size() - 1 do
-                    local obj = sq:getObjects():get(j)
-                    if isSupplyCrate(obj) then
-                        local found = false
-                        for _, cached in ipairs(knownCrates) do
-                            if cached == obj then found = true; break end
-                        end
-                        if not found then
-                            table.insert(knownCrates, obj)
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
-Events.OnTick.Add(onTick)
 
 -------------------------------------------------
 -- Действия
@@ -121,22 +53,18 @@ local function doPlaceCrate(playerObj, square)
     local cell = getCell()
     if not cell or not square then return end
 
-    local obj = IsoObject.new(cell, square, CRATE_SPRITE)
+    local spriteName = CRATE_SPRITES[crateRotation] or CRATE_SPRITES[0]
+    local obj = IsoObject.new(cell, square, spriteName)
     obj:getModData().StarterKit_Crate = true
     obj:setName("SupplyCrate")
 
     square:AddSpecialObject(obj)
-
-    -- Очистить содержимое если спрайт создал контейнер
-    local container = obj:getContainer()
-    if container then
-        container:removeAllItems()
-    end
-
     obj:transmitCompleteItemToServer()
+end
 
-    -- Добавляем в кеш для мигания
-    table.insert(knownCrates, obj)
+local function doRotateCrate(playerObj, square)
+    crateRotation = (crateRotation + 1) % 2
+    playerObj:Say(getText("IGUI_StarterKit_Rotated"))
 end
 
 local function doRemoveCrate(playerObj, crate)
@@ -189,6 +117,10 @@ local function onFillWorldObjectContextMenu(playerIndex, context, worldobjects, 
             context:addOption(
                 getText("IGUI_StarterKit_Place"),
                 playerObj, doPlaceCrate, square
+            )
+            context:addOption(
+                getText("IGUI_StarterKit_Rotate"),
+                playerObj, doRotateCrate, square
             )
         end
     end
