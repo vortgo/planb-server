@@ -4,6 +4,13 @@ StarterKitClient = StarterKitClient or {}
 local CRATE_SPRITE = "carpentry_01_16"
 
 -------------------------------------------------
+-- Кеш ящиков и мигание
+-------------------------------------------------
+
+local knownCrates = {}
+local glowTimer = 0
+
+-------------------------------------------------
 -- Утилиты
 -------------------------------------------------
 
@@ -41,6 +48,72 @@ local function isAdmin(playerObj)
 end
 
 -------------------------------------------------
+-- Мигание золотым для ящиков снабжения
+-------------------------------------------------
+
+-- Подсветка — вызывается каждый кадр рендера
+local function onRenderTick()
+    if #knownCrates == 0 then return end
+
+    glowTimer = glowTimer + 0.05
+    if glowTimer > 6.2831 then glowTimer = glowTimer - 6.2831 end
+
+    local alpha = 0.15 + 0.45 * (0.5 + 0.5 * math.sin(glowTimer))
+
+    local i = 1
+    while i <= #knownCrates do
+        local obj = knownCrates[i]
+        if not obj or not obj:getSquare() then
+            table.remove(knownCrates, i)
+        else
+            obj:setHighlighted(true, false)
+            obj:setHighlightColor(1.0, 0.85, 0.2, alpha)
+            i = i + 1
+        end
+    end
+end
+
+Events.OnRenderTick.Add(onRenderTick)
+
+-- Сканирование — раз в ~секунду ищем ящики рядом с игроком
+local scanTimer = 0
+local function onTick()
+    scanTimer = scanTimer + 1
+    if scanTimer < 60 then return end
+    scanTimer = 0
+
+    local player = getSpecificPlayer(0)
+    if not player then return end
+
+    local px = math.floor(player:getX())
+    local py = math.floor(player:getY())
+    local pz = math.floor(player:getZ())
+    local radius = 20
+
+    for dx = -radius, radius do
+        for dy = -radius, radius do
+            local sq = getCell():getGridSquare(px + dx, py + dy, pz)
+            if sq then
+                for j = 0, sq:getObjects():size() - 1 do
+                    local obj = sq:getObjects():get(j)
+                    if isSupplyCrate(obj) then
+                        local found = false
+                        for _, cached in ipairs(knownCrates) do
+                            if cached == obj then found = true; break end
+                        end
+                        if not found then
+                            table.insert(knownCrates, obj)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+Events.OnTick.Add(onTick)
+
+-------------------------------------------------
 -- Действия
 -------------------------------------------------
 
@@ -54,13 +127,16 @@ local function doPlaceCrate(playerObj, square)
 
     square:AddSpecialObject(obj)
 
-    -- Очистить содержимое если ящик является контейнером
+    -- Очистить содержимое если спрайт создал контейнер
     local container = obj:getContainer()
     if container then
         container:removeAllItems()
     end
 
     obj:transmitCompleteItemToServer()
+
+    -- Добавляем в кеш для мигания
+    table.insert(knownCrates, obj)
 end
 
 local function doRemoveCrate(playerObj, crate)
