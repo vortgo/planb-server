@@ -106,10 +106,17 @@ end
 Events.OnLoadRadioScripts.Add(SafeZoneRadio.OnLoadRadioScripts)
 
 -------------------------------------------------
--- Автотрансляция каждые 10 игровых минут
+-- Автотрансляция 2 раза в игровые сутки (8:00 и 20:00)
 -------------------------------------------------
 
-local function onEveryTenMinutes()
+local lastBroadcastHour = -1
+
+local function onEveryHour()
+    local hour = getGameTime():getHour()
+    if hour ~= 8 and hour ~= 20 then return end
+    if hour == lastBroadcastHour then return end
+    lastBroadcastHour = hour
+
     local channel = DynamicRadio.cache[SafeZoneRadio.channelUUID]
     if not channel then return end
 
@@ -117,7 +124,7 @@ local function onEveryTenMinutes()
     channel:setAiringBroadcast(bc)
 end
 
-Events.EveryTenMinutes.Add(onEveryTenMinutes)
+Events.EveryHours.Add(onEveryHour)
 
 -------------------------------------------------
 -- /radio <freq> <text> — админская команда
