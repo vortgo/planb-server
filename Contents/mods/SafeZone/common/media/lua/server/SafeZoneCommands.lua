@@ -190,9 +190,97 @@ SafeZoneCommands.register("servermsg", function(args)
     log("servermsg: " .. text)
 end)
 
+-- msguser <username> <text...>
+-- Sends personal message to specific player via SZ_AC client handler
+SafeZoneCommands.register("msguser", function(args)
+    if #args < 2 then
+        log("msguser: usage — msguser <username> <message...>")
+        return
+    end
+    local username = args[1]
+    local text = table.concat(args, " ", 2)
+    local players = getOnlinePlayers()
+    if not players then return end
+    for i = 0, players:size() - 1 do
+        local p = players:get(i)
+        if p:getUsername():lower() == username:lower() then
+            sendServerCommand(p, "SZ_AC", "msg", {text = text})
+            log("msguser: sent to " .. username .. " — " .. text)
+            return
+        end
+    end
+    log("msguser: player not found — " .. username)
+end)
+
+-- kickdelay <username> <seconds> <message...>
+-- Sends message to player, then kicks after delay
+local pendingKicks = {}
+
+SafeZoneCommands.register("kickdelay", function(args)
+    if #args < 3 then
+        log("kickdelay: usage — kickdelay <username> <seconds> <message...>")
+        return
+    end
+
+    local username = args[1]
+    local delaySec = tonumber(args[2]) or 10
+    local message = table.concat(args, " ", 3)
+
+    local players = getOnlinePlayers()
+    for i = 0, players:size() - 1 do
+        local p = players:get(i)
+        if p:getUsername():lower() == username:lower() then
+            p:Say("[Server] " .. message)
+            table.insert(pendingKicks, {
+                username = username,
+                kickTime = getTimestampMs() + (delaySec * 1000),
+            })
+            log("kickdelay: " .. username .. " will be kicked in " .. delaySec .. "s — " .. message)
+            return
+        end
+    end
+    log("kickdelay: player not found — " .. username)
+end)
+
+local function processPendingKicks()
+    local now = getTimestampMs()
+    local i = 1
+    while i <= #pendingKicks do
+        local kick = pendingKicks[i]
+        if now >= kick.kickTime then
+            local players = getOnlinePlayers()
+            for j = 0, players:size() - 1 do
+                local p = players:get(j)
+                if p:getUsername():lower() == kick.username:lower() then
+                    p:disconnect()
+                    log("kickdelay: kicked " .. kick.username)
+                    break
+                end
+            end
+            table.remove(pendingKicks, i)
+        else
+            i = i + 1
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Hook into game loop
 -- ---------------------------------------------------------------------------
 
-Events.EveryOneMinute.Add(processFile)
-log("Command bridge loaded — watching " .. SafeZoneCommands.COMMANDS_FILE)
+local lastProcessTime = 0
+local PROCESS_INTERVAL_MS = 5000 -- 5 seconds
+
+local function tickProcessFile()
+    local now = getTimestampMs()
+    if now - lastProcessTime >= PROCESS_INTERVAL_MS then
+        lastProcessTime = now
+        processFile()
+    end
+end
+
+if isServer() then
+    Events.OnTick.Add(tickProcessFile)
+    Events.OnTick.Add(processPendingKicks)
+    log("Command bridge loaded — watching " .. SafeZoneCommands.COMMANDS_FILE)
+end

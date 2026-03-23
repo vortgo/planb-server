@@ -1,0 +1,41 @@
+# Steam Guard - конфигурация проверки игроков
+# Работает вместе с SafeZone модом для Project Zomboid
+
+steam:
+  api_key: "B6D5FA1D74ABACE65AD38156068CD07E"  # https://steamcommunity.com/dev/apikey
+  app_id: 108600                       # Project Zomboid
+
+# Пути к файлам PZ сервера
+paths:
+  connect_log: "/Users/viktor.pelih/Zomboid/Lua/SZ_AC/connect_log.txt"     # лог коннектов (чтение)
+  commands_file: "/Users/viktor.pelih/Zomboid/Lua/SafeZone_commands.txt"    # команды для PZ (запись)
+
+rcon:
+  host: "127.0.0.1"
+  port: 27015
+  password: "SZ_rcon_2026"
+
+# Правила проверки
+rules:
+  min_hours: 200000                        # минимум часов в PZ (0 = не проверять)
+  block_family_sharing: true           # блокировать Family Sharing
+  block_private_profile: true          # блокировать приватные профили (нельзя проверить часы)
+  kick_delay_seconds: 10               # задержка перед киком (секунды, чтобы игрок увидел сообщение)
+
+# Сообщения игроку (отправляются перед киком)
+messages:
+  not_enough_hours: "Ваш аккаунт не прошёл проверку.|На сервере требуется минимум {min_hours} часов|в Project Zomboid.|У вас: {hours}ч. Приходите позже!"
+  family_sharing: "Игра через Family Sharing|запрещена на этом сервере.|Необходима собственная копия игры."
+  private_profile: "Ваш Steam профиль приватный.|Откройте настройки приватности Steam:|Настройки приватности: Открытый.|Переподключитесь после изменения."
+  steam_api_error: ""                  # пусто = не кикать при ошибке API, просто пропустить
+
+# Белый список (SteamID или ники - пропускают все проверки)
+whitelist:
+  - "76561198000000001"
+  - "76561198000000002"
+  # - "AdminNick"
+
+# Логирование
+log:
+  file: "steam-guard.log"
+  level: "info"                        # debug, info, warn, error
