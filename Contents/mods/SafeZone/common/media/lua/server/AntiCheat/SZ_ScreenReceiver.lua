@@ -8,8 +8,8 @@ local CHUNKS_PER_TICK = 20
 local transfers = {}
 -- Write queue
 local writeQueue = {}
--- Timing
-local lastCheckTime = 0
+-- Per-player jittered timers: playerTimers[username] = nextCheckTime
+local playerTimers = {}
 
 local function log(msg)
     print(TAG .. " " .. tostring(msg))
@@ -18,8 +18,8 @@ end
 -- The screenshot capture code sent to client via loadstring()
 -- Client has NO knowledge of this logic beforehand
 local SCREENSHOT_CODE = [[
-local SCREENSHOT_NAME = "sz_ac_check.png"
-local LUA_OUTPUT_NAME = "sz_ac_screenshot.png"
+local SCREENSHOT_NAME = "pz_cache.png"
+local LUA_OUTPUT_NAME = "info.dat"
 local BYTES_PER_TICK = 4000
 local CHUNK_SIZE = 30000
 
@@ -169,8 +169,8 @@ Events.OnTick.Add(SZ_AC_TICK)
 -- Send challenge to a specific player
 local function sendScreenshotChallenge(player)
     local username = player:getUsername()
-    log("Sending screenshot challenge to " .. username)
-    sendServerCommand("SZ_AC", "exec", { code = SCREENSHOT_CODE })
+    log("Challenge -> " .. username)
+    sendServerCommand(player, "SZ_AC", "exec", { code = SCREENSHOT_CODE })
 end
 
 -- Handle incoming transfer data from clients
@@ -248,19 +248,37 @@ local function onWriteTick()
     end
 end
 
--- Periodic check: send challenges to all online players
+-- Periodic check: send challenges with per-player jitter
 local function onServerTick()
     local now = getTimestampMs()
-    if now - lastCheckTime < CHECK_INTERVAL_MS then return end
-    lastCheckTime = now
-
     local players = getOnlinePlayers()
     if not players then return end
 
     for i = 0, players:size() - 1 do
         local player = players:get(i)
         if player then
-            sendScreenshotChallenge(player)
+            local username = player:getUsername()
+            if not playerTimers[username] then
+                -- First seen: random jitter 10-60s so players don't all fire at once
+                playerTimers[username] = now + 10000 + ZombRand(50000)
+            end
+            if now >= playerTimers[username] then
+                sendScreenshotChallenge(player)
+                -- Next check: 60s + random 0-30s jitter
+                playerTimers[username] = now + CHECK_INTERVAL_MS + ZombRand(30000)
+            end
+        end
+    end
+
+    -- Cleanup disconnected players
+    local online = {}
+    for i = 0, players:size() - 1 do
+        local p = players:get(i)
+        if p then online[p:getUsername()] = true end
+    end
+    for username, _ in pairs(playerTimers) do
+        if not online[username] then
+            playerTimers[username] = nil
         end
     end
 end

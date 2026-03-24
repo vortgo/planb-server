@@ -7,7 +7,7 @@ steam:
 
 # Пути к файлам PZ сервера
 paths:
-  connect_log: "/Users/viktor.pelih/Zomboid/Lua/SZ_AC/connect_log.txt"     # лог коннектов (чтение)
+  logs_dir: "/Users/viktor.pelih/Zomboid/Logs"                             # папка логов PZ (ищет *_user.txt)
   commands_file: "/Users/viktor.pelih/Zomboid/Lua/SafeZone_commands.txt"    # команды для PZ (запись)
 
 rcon:
@@ -17,7 +17,7 @@ rcon:
 
 # Правила проверки
 rules:
-  min_hours: 200000                        # минимум часов в PZ (0 = не проверять)
+  min_hours: 50                        # минимум часов в PZ (0 = не проверять)
   block_family_sharing: true           # блокировать Family Sharing
   block_private_profile: true          # блокировать приватные профили (нельзя проверить часы)
   kick_delay_seconds: 10               # задержка перед киком (секунды, чтобы игрок увидел сообщение)

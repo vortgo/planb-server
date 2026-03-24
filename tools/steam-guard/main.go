@@ -11,8 +11,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,7 +26,7 @@ type Config struct {
 		AppID  int    `yaml:"app_id"`
 	} `yaml:"steam"`
 	Paths struct {
-		ConnectLog   string `yaml:"connect_log"`
+		LogsDir      string `yaml:"logs_dir"`
 		CommandsFile string `yaml:"commands_file"`
 	} `yaml:"paths"`
 	Rules struct {
@@ -102,17 +102,9 @@ func loadConfig(path string) error {
 }
 
 func isWhitelisted(username, steamID string) bool {
-	id, _ := strconv.ParseInt(steamID, 10, 64)
 	for _, entry := range cfg.Whitelist {
-		if entry == username {
+		if entry == steamID || entry == username {
 			return true
-		}
-		entryID, err := strconv.ParseInt(entry, 10, 64)
-		if err == nil && id != 0 {
-			// Match ±1 to handle Lua double precision loss
-			if id == entryID || id-1 == entryID || id+1 == entryID {
-				return true
-			}
 		}
 	}
 	return false
@@ -286,27 +278,6 @@ func formatMessage(template string, vars map[string]string) string {
 	return result
 }
 
-// Lua doubles lose precision for SteamIDs (>2^53).
-// Try ±1 to find the real one using GetOwnedGames (strict about exact ID).
-func fixSteamID(steamID string) string {
-	id, err := strconv.ParseInt(steamID, 10, 64)
-	if err != nil {
-		return steamID
-	}
-
-	for _, delta := range []int64{0, -1, 1} {
-		candidate := fmt.Sprintf("%d", id+delta)
-		hours, err := getPlaytimeHours(candidate)
-		if err == nil && hours >= 0 {
-			if delta != 0 {
-				logger.Printf("  SteamID corrected: %s -> %s (precision fix)", steamID, candidate)
-			}
-			return candidate
-		}
-	}
-	return steamID
-}
-
 func checkPlayer(username, steamID string) {
 	logger.Printf("Checking player: %s (SteamID: %s)", username, steamID)
 
@@ -314,9 +285,6 @@ func checkPlayer(username, steamID string) {
 		logger.Printf("PASS: %s is whitelisted", username)
 		return
 	}
-
-	// Fix Lua double precision loss for SteamIDs
-	steamID = fixSteamID(steamID)
 
 	// Check cache (persists until restart)
 	if cached, ok := cache[steamID]; ok {
@@ -403,53 +371,136 @@ func checkPlayer(username, steamID string) {
 	}
 }
 
-func tailFile(path string) {
-	// Wait for file to exist
-	for {
-		if _, err := os.Stat(path); err == nil {
-			break
-		}
-		logger.Printf("Waiting for connect log: %s", path)
-		time.Sleep(5 * time.Second)
-	}
+// Find the latest *_user.txt across logs dir and all logs_* subdirectories
+func findLatestUserLog(logsDir string) string {
+	var best string
+	var bestName string
 
-	file, err := os.Open(path)
+	// Check files in root logs dir
+	entries, err := os.ReadDir(logsDir)
 	if err != nil {
-		logger.Fatalf("Cannot open connect log: %v", err)
+		return ""
 	}
-	defer file.Close()
 
-	// Seek to end (only process new lines)
-	file.Seek(0, io.SeekEnd)
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), "_user.txt") {
+			if entry.Name() > bestName {
+				bestName = entry.Name()
+				best = filepath.Join(logsDir, entry.Name())
+			}
+		}
+		// Check inside logs_* subdirectories
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "logs_") {
+			subDir := filepath.Join(logsDir, entry.Name())
+			files, err := os.ReadDir(subDir)
+			if err != nil {
+				continue
+			}
+			for _, f := range files {
+				if !f.IsDir() && strings.HasSuffix(f.Name(), "_user.txt") {
+					if f.Name() > bestName {
+						bestName = f.Name()
+						best = filepath.Join(subDir, f.Name())
+					}
+				}
+			}
+		}
+	}
+	return best
+}
 
-	reader := bufio.NewReader(file)
-	logger.Printf("Tailing connect log: %s", path)
+// Parse PZ user.txt line for "fully connected" events
+// Format: [23-03-26 20:14:54.597] 76561198034616829 "Kosmonavt" fully connected (11668,6928,0).
+func parseUserLine(line string) (steamID, username string, ok bool) {
+	if !strings.Contains(line, "fully connected") {
+		return "", "", false
+	}
+
+	// Find SteamID (first number after ] )
+	idx := strings.Index(line, "] ")
+	if idx < 0 {
+		return "", "", false
+	}
+	rest := line[idx+2:]
+	parts := strings.SplitN(rest, " ", 2)
+	if len(parts) < 2 {
+		return "", "", false
+	}
+	steamID = parts[0]
+
+	// Find username in quotes
+	q1 := strings.Index(rest, "\"")
+	if q1 < 0 {
+		return "", "", false
+	}
+	q2 := strings.Index(rest[q1+1:], "\"")
+	if q2 < 0 {
+		return "", "", false
+	}
+	username = rest[q1+1 : q1+1+q2]
+
+	return steamID, username, true
+}
+
+func watchAndTail(logsDir string) {
+	var currentPath string
+	var file *os.File
+	var reader *bufio.Reader
 
 	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
+		// Check for newer file every 10 seconds
+		latest := findLatestUserLog(logsDir)
+
+		if latest != "" && latest != currentPath {
+			// New file found — switch
+			if file != nil {
+				file.Close()
+			}
+
+			var err error
+			file, err = os.Open(latest)
+			if err != nil {
+				logger.Printf("ERROR: cannot open %s: %v", latest, err)
+				time.Sleep(10 * time.Second)
+				continue
+			}
+
+			if currentPath == "" {
+				// First start — seek to end (don't process old entries)
+				file.Seek(0, io.SeekEnd)
+				logger.Printf("Tailing (from end): %s", latest)
+			} else {
+				// Server restarted — read new file from beginning
+				logger.Printf("Server restarted, switched to: %s", latest)
+			}
+
+			currentPath = latest
+			reader = bufio.NewReader(file)
+		}
+
+		if reader == nil {
+			logger.Printf("Waiting for PZ user.txt in: %s", logsDir)
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		// Read available lines
+		hasData := false
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				break
+			}
+			hasData = true
+			line = strings.TrimSpace(line)
+			if steamID, username, ok := parseUserLine(line); ok {
+				logger.Printf("Player connected: %s (SteamID: %s)", username, steamID)
+				go checkPlayer(username, steamID)
+			}
+		}
+
+		if !hasData {
 			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		// Format: "2026-03-23 23:32:43 connect Username SteamID IP"
-		parts := strings.Fields(line)
-		if len(parts) < 5 {
-			continue
-		}
-
-		// parts[0]=date, parts[1]=time, parts[2]=action, parts[3]=username, parts[4]=steamid
-		action := parts[2]
-		username := parts[3]
-		steamID := parts[4]
-
-		if action == "connect" {
-			go checkPlayer(username, steamID)
 		}
 	}
 }
@@ -477,7 +528,7 @@ func main() {
 	logger = log.New(logWriter, "[steam-guard] ", log.LstdFlags)
 
 	logger.Printf("Steam Guard started")
-	logger.Printf("  Connect log: %s", cfg.Paths.ConnectLog)
+	logger.Printf("  PZ logs dir: %s", cfg.Paths.LogsDir)
 	logger.Printf("  Commands file: %s", cfg.Paths.CommandsFile)
 	logger.Printf("  Min hours: %d", cfg.Rules.MinHours)
 	logger.Printf("  Block family sharing: %v", cfg.Rules.BlockFamilySharing)
@@ -492,7 +543,7 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	go tailFile(cfg.Paths.ConnectLog)
+	go watchAndTail(cfg.Paths.LogsDir)
 
 	<-sigChan
 	logger.Printf("Steam Guard stopped")
