@@ -1,0 +1,33 @@
+VERSION = 1,
+
+option SafeZone.WelcomeTitle
+{
+    type = string,
+    default = Welcome to the server!,
+    page = SafeZone,
+    translation = SafeZone_WelcomeTitle,
+}
+
+option SafeZone.WelcomeText
+{
+    type = string,
+    default = <CENTRE> <SIZE:small> Welcome! <LINE><LINE> Check our Discord for guides and rules. <LINE><LINE> Have fun and stay safe!,
+    page = SafeZone,
+    translation = SafeZone_WelcomeText,
+}
+
+option SafeZone.WelcomeDiscordURL
+{
+    type = string,
+    default = ,
+    page = SafeZone,
+    translation = SafeZone_WelcomeDiscordURL,
+}
+
+option SafeZone.WelcomeServerURL
+{
+    type = string,
+    default = ,
+    page = SafeZone,
+    translation = SafeZone_WelcomeServerURL,
+}

@@ -362,6 +362,7 @@ end
 function EventUtils.removeVehicleByEventId(x, y, z, eventId, radius)
     radius = radius or 5
     local cell = getCell()
+    local removed = 0
 
     for dx = -radius, radius do
         for dy = -radius, radius do
@@ -370,13 +371,15 @@ function EventUtils.removeVehicleByEventId(x, y, z, eventId, radius)
                 local vehicle = sq:getVehicleContainer()
                 if vehicle and vehicle:getModData().SZEventId == eventId then
                     vehicle:permanentlyRemove()
-                    log("Removed vehicle for eventId=" .. eventId)
-                    return true
+                    removed = removed + 1
+                    log("Removed vehicle #" .. removed .. " for eventId=" .. eventId)
                 end
             end
         end
     end
 
-    log("Vehicle not found for eventId=" .. eventId)
-    return false
+    if removed == 0 then
+        log("Vehicle not found for eventId=" .. eventId)
+    end
+    return removed > 0
 end

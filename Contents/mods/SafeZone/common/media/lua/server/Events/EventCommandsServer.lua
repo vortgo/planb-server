@@ -108,7 +108,7 @@ local function onClientCommand(module, command, player, args)
     end
 end
 
-Events.OnClientCommand.Add(onClientCommand)
+-- Подписка в onServerStarted (events недоступны при загрузке файла)
 
 -- ---------------------------------------------------------------------------
 -- Файловые команды через SafeZoneCommands
@@ -178,6 +178,16 @@ local function registerFileCommands()
     log("File commands registered")
 end
 
--- Откладываем регистрацию файловых команд до полной загрузки всех скриптов
-Events.OnServerStarted.Add(registerFileCommands)
+local function onServerStarted()
+    if Events.OnClientCommand then
+        Events.OnClientCommand.Add(onClientCommand)
+        log("Registered OnClientCommand")
+    else
+        log("WARN: Events.OnClientCommand unavailable!")
+    end
+    registerFileCommands()
+    log("EventCommandsServer initialized")
+end
+
+Events.OnServerStarted.Add(onServerStarted)
 log("EventCommandsServer loaded")

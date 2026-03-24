@@ -1,0 +1,6 @@
+# Compiled Java classes (extracted from JAR for analysis)
+zombie/
+
+# Go binary
+tools/steam-guard/steam-guard
+tools/steam-guard/steam-guard.log

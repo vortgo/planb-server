@@ -73,6 +73,19 @@ local function loadEventMessages()
 end
 
 -- ---------------------------------------------------------------------------
+-- Broadcast: отправка серверной команды всем клиентам
+-- ---------------------------------------------------------------------------
+
+local function broadcastToClients(module, command, args)
+    local players = getOnlinePlayers()
+    if players then
+        for i = 0, players:size() - 1 do
+            sendServerCommand(players:get(i), module, command, args)
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Уведомления: лог + радио
 -- ---------------------------------------------------------------------------
 
@@ -84,6 +97,10 @@ function EventManager.notify(message, eventData)
     local msgs = EventManager.eventMessages[eventData.type]
     if not msgs or #msgs == 0 then return end
 
+    if not SafeZoneRadio then
+        log("SafeZoneRadio not loaded yet, skipping broadcast")
+        return
+    end
     local channel = DynamicRadio and DynamicRadio.cache
         and DynamicRadio.cache[SafeZoneRadio.channelUUID]
     if not channel then
@@ -199,6 +216,19 @@ function EventManager.spawn(typeName, x, y, z, source)
         return nil, "Location is inside a safehouse"
     end
 
+    -- Проверка: нет ли уже события в радиусе 30 клеток
+    local overlapRadius = EventConfig.EVENT_OVERLAP_RADIUS or 30
+    local storage = getStorage()
+    for _, existing in ipairs(storage.events) do
+        local dist = EventUtils.distance(x, y, existing.x, existing.y)
+        if dist <= overlapRadius then
+            log("Event blocked: too close to event #" .. existing.id
+                .. " (" .. existing.type .. ") at " .. existing.x .. "," .. existing.y
+                .. " dist=" .. math.floor(dist))
+            return nil, "Too close to existing event #" .. existing.id .. " (dist=" .. math.floor(dist) .. ")"
+        end
+    end
+
     -- Регистрация в планировщике
     local storage = getStorage()
     local id = storage.nextId
@@ -235,6 +265,14 @@ function EventManager.spawn(typeName, x, y, z, source)
         log("Event #" .. id .. " (" .. typeName .. ") scheduled at " .. x .. "," .. y .. " (chunk not loaded)")
     end
 
+    -- Уведомляем всех клиентов о новом событии (для маркеров на карте)
+    broadcastToClients("SafeZoneEvents", "eventNotify", {
+        id = event.id,
+        type = event.type,
+        x = event.x,
+        y = event.y,
+    })
+
     return event, nil
 end
 
@@ -250,11 +288,14 @@ function EventManager.remove(eventId, force)
             if not cleaned then
                 event.state = EventManager.STATE_PENDING_CLEANUP
                 log("Event #" .. eventId .. ": cleanup deferred (chunk/player)")
+                -- Маркеры убираем сразу, даже если cleanup отложен
+                broadcastToClients("SafeZoneEvents", "eventRemoved", { id = eventId })
                 return false, "Cleanup deferred"
             end
 
             table.remove(storage.events, i)
             log("Removed event #" .. eventId .. " (was " .. event.state .. ")")
+            broadcastToClients("SafeZoneEvents", "eventRemoved", { id = eventId })
             return true
         end
     end
@@ -275,6 +316,8 @@ function EventManager.removeAll(force)
     for i = count, 1, -1 do
         local event = storage.events[i]
         local cleaned = doCleanup(event, force)
+        -- Маркеры убираем сразу для всех событий
+        broadcastToClients("SafeZoneEvents", "eventRemoved", { id = event.id })
         if cleaned then
             table.remove(storage.events, i)
         else
@@ -325,10 +368,15 @@ local function tick()
             tryInitialize(event)
         end
 
-        -- 2. Pending cleanup: повторяем cleanup если чанк загрузился
+        -- 2. Pending cleanup: повторяем cleanup, но не на глазах у игрока (15 тайлов)
         if event.state == EventManager.STATE_PENDING_CLEANUP then
             if isChunkLoaded(event.x, event.y, event.z) then
-                table.insert(toRemove, event.id)
+                if not EventUtils.isPlayerNearby(event.x, event.y, 15) then
+                    local cleaned = doCleanup(event, true)
+                    if cleaned then
+                        table.insert(toRemove, event.id)
+                    end
+                end
             end
         end
 
@@ -359,12 +407,19 @@ local function tick()
     end
 
     for j = #toRemove, 1, -1 do
-        EventManager.remove(toRemove[j])
+        EventManager.remove(toRemove[j], true)
     end
 end
 
-Events.EveryOneMinute.Add(tick)
-
+-- Tick каждые ~30 сек (через EveryTenSeconds + счётчик)
+local tickCounter = 0
+local function tickThrottled()
+    tickCounter = tickCounter + 1
+    if tickCounter >= 3 then
+        tickCounter = 0
+        tick()
+    end
+end
 -- ---------------------------------------------------------------------------
 -- Сборщик мусора: при загрузке чанка проверяем осиротевшие объекты
 -- Если объект/предмет помечен SZEventId, но такого события нет — удаляем
@@ -447,8 +502,7 @@ local function onLoadGridsquare(square)
     end
 end
 
-Events.LoadGridsquare.Add(onLoadGridsquare)
-Events.OnServerStarted.Add(loadEventMessages)
+-- Подписки регистрируются в onServerStarted (events недоступны при загрузке файла)
 
 -- ---------------------------------------------------------------------------
 -- Автоспавн событий
@@ -484,17 +538,52 @@ local function autoSpawn()
         return
     end
 
-    local typeName = availableTypes[ZombRand(#availableTypes) + 1]
-    local locations = EventConfig.Locations[typeName]
-    local loc = locations[ZombRand(#locations) + 1]
-    log("AutoSpawn: trying " .. typeName .. " at " .. loc.x .. "," .. loc.y)
+    local maxAttempts = 3
+    for attempt = 1, maxAttempts do
+        local typeName = availableTypes[ZombRand(#availableTypes) + 1]
+        local locations = EventConfig.Locations[typeName]
+        local loc = locations[ZombRand(#locations) + 1]
+        log("AutoSpawn: attempt " .. attempt .. "/" .. maxAttempts .. " — " .. typeName .. " at " .. loc.x .. "," .. loc.y)
 
-    local event, err = EventManager.spawn(typeName, loc.x, loc.y, 0, "auto")
-    if not event then
-        log("AutoSpawn: failed — " .. tostring(err))
+        local event, err = EventManager.spawn(typeName, loc.x, loc.y, 0, "auto")
+        if event then
+            return
+        end
+        log("AutoSpawn: attempt " .. attempt .. " failed — " .. tostring(err))
     end
+    log("AutoSpawn: all " .. maxAttempts .. " attempts failed")
 end
 
-Events.EveryOneMinute.Add(autoSpawn)
+-- ---------------------------------------------------------------------------
+-- Инициализация: все подписки на events регистрируются после старта сервера
+-- ---------------------------------------------------------------------------
 
-log("EventManager loaded")
+local SZ_VERSION = "0.4.2"
+
+local function onServerStarted()
+    loadEventMessages()
+
+    -- Регистрируем только существующие events
+    if Events.EveryTenSeconds then
+        Events.EveryTenSeconds.Add(tickThrottled)
+        log("Registered tick on EveryTenSeconds")
+    elseif Events.EveryOneMinute then
+        Events.EveryOneMinute.Add(tick)
+        log("Registered tick on EveryOneMinute (EveryTenSeconds unavailable)")
+    end
+
+    if Events.LoadGridsquare then
+        Events.LoadGridsquare.Add(onLoadGridsquare)
+        log("Registered GC on LoadGridsquare")
+    end
+
+    if Events.EveryOneMinute then
+        Events.EveryOneMinute.Add(autoSpawn)
+        log("Registered autoSpawn on EveryOneMinute")
+    end
+
+    log("EventManager v" .. SZ_VERSION .. " initialized")
+end
+
+Events.OnServerStarted.Add(onServerStarted)
+log("EventManager v" .. SZ_VERSION .. " loaded")

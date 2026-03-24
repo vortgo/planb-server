@@ -13,6 +13,9 @@ EventConfig.BUILDING_SEARCH_RADIUS = 7
 -- Радиус поиска свободной клетки
 EventConfig.SAFE_SQUARE_RADIUS = 20
 
+-- Минимальное расстояние между событиями (в клетках)
+EventConfig.EVENT_OVERLAP_RADIUS = 30
+
 -- ---------------------------------------------------------------------------
 -- Лут-таблицы
 -- chance = вероятность (0..1), min/max = количество
@@ -67,6 +70,17 @@ EventConfig.Loot = {
         { item = "Base.HuntingKnife",     chance = 0.3, min = 1, max = 1 },
         { item = "Base.Torch",            chance = 0.4, min = 1, max = 1 },
     },
+    helicoptercrash = {
+        { item = "Base.AssaultRifle",     chance = 0.3, min = 1, max = 1 },
+        { item = "Base.Shotgun",          chance = 0.2, min = 1, max = 1 },
+        { item = "Base.Pistol",           chance = 0.3, min = 1, max = 2 },
+        { item = "Base.Bullets556",       chance = 0.5, min = 10, max = 40 },
+        { item = "Base.ShotgunShells",    chance = 0.4, min = 4, max = 12 },
+        { item = "Base.Bullets9mm",       chance = 0.4, min = 8, max = 20 },
+        { item = "Base.FirstAidKit",      chance = 0.5, min = 1, max = 3 },
+        { item = "Base.MRE",             chance = 0.4, min = 2, max = 6 },
+        { item = "Base.WaterBottle",  chance = 0.4, min = 1, max = 3 },
+    },
 }
 
 -- ---------------------------------------------------------------------------
@@ -80,6 +94,7 @@ EventConfig.Zombies = {
     airdrop         = { min = 3, max = 8 },
     abandonedvehicle = { min = 0, max = 3 },
     camp            = { min = 2, max = 6 },
+    helicoptercrash = { min = 5, max = 12 },
 }
 
 -- ---------------------------------------------------------------------------
@@ -109,16 +124,17 @@ EventConfig.EVENT_MESSAGES_FILE = "SafeZone_event_messages.txt"
 -- Интервал автоспавна (в реальных минутах)
 -- ---------------------------------------------------------------------------
 
-EventConfig.AUTO_SPAWN_INTERVAL_MINUTES = 3
+EventConfig.AUTO_SPAWN_INTERVAL_MINUTES = 5
 
 -- Типы для автоспавна (закомментируй чтобы исключить из ротации)
 EventConfig.AUTO_SPAWN_TYPES = {
-    -- "buildingstash",
---     "foreststash",
---     "abandonedvehicle",
-    "corpswithloot",
-    -- "airdrop",
-    -- "camp",
+    "buildingstash",
+    "foreststash",
+    "abandonedvehicle",
+--     "corpswithloot",
+    "airdrop",
+    "camp",
+    "helicoptercrash",
 }
 
 -- ---------------------------------------------------------------------------
@@ -187,6 +203,16 @@ EventConfig.Locations = {
         {x=10194, y=7948},
         {x=9750, y=9825},
         {x=9170, y=9826},
+    },
+    helicoptercrash = {
+        {x=11197, y=6983},
+        {x=11062, y=6976},
+        {x=10956, y=7000},
+        {x=10820, y=6844},
+        {x=10820, y=6681},
+        {x=10656, y=6763},
+        {x=11541, y=7899},
+        {x=11988, y=7905},
     },
 }
 

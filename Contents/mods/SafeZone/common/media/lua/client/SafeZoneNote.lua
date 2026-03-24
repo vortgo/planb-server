@@ -1,7 +1,6 @@
-SafeZoneNote = {}
+require "SafeZoneConfig"
 
-local COORD_X = 13050
-local COORD_Y = 9750
+SafeZoneNote = {}
 
 SafeZoneNote.onCreatePlayer = function(playerIndex, playerObj)
     local modData = playerObj:getModData()
@@ -9,7 +8,7 @@ SafeZoneNote.onCreatePlayer = function(playerIndex, playerObj)
     modData.SafeZone_NoteGiven = true
 
     local noteName = getText("IGUI_SafeZone_NoteName")
-    local noteText = getText("IGUI_SafeZone_NoteText", tostring(COORD_X), tostring(COORD_Y))
+    local noteText = getText("IGUI_SafeZone_NoteText", tostring(SafeZoneConfig.BASE_X), tostring(SafeZoneConfig.BASE_Y))
 
     -- Ждём несколько тиков — при первом подключении сеть может быть не готова
     local ticksLeft = 10

@@ -1,50 +1,39 @@
+require "SafeZoneConfig"
+
 SafeZoneRadio = {}
 SafeZoneRadio.channelUUID = "SZ-EVENTS-001"
-SafeZoneRadio.frequency = 95200 -- 95.2 MHz
-SafeZoneRadio.messages = {}
 
-local MESSAGES_FILE = "SafeZone_radio_messages.txt"
+local RADIO_MESSAGES_FILE = "SafeZone_radio_messages.txt"
+local radioMessages = {}
 
--------------------------------------------------
--- Загрузка/создание файла сообщений в Zomboid/Lua/
--------------------------------------------------
-
-local function writeDefaultMessages()
-    local writer = getFileWriter(MESSAGES_FILE, true, false)
-    if not writer then return end
-    writer:write("Attention all survivors. Safe zone is operational. Coordinates: 13050, 9750.\n")
-    writer:write("Perimeter secured. Supply crates available at the safe zone.\n")
-    writer:write("All survivors - head northwest toward the old military base. Walls are holding.\n")
-    writer:write("This is SafeZone broadcast. We have shelter, supplies, and defenses. You are not alone.\n")
-    writer:write("Patrol reports no breach. Safe zone remains secure. Stay on this frequency for updates.\n")
-    writer:close()
-    print("[SafeZoneRadio] Created default " .. MESSAGES_FILE .. " in Zomboid/Lua/ folder")
-    print("[SafeZoneRadio] Edit this file to customize radio messages (supports Cyrillic/UTF-8)")
-end
-
-local function loadMessages()
-    local reader = getFileReader(MESSAGES_FILE, true)
+local function loadRadioMessages()
+    local reader = getFileReader(RADIO_MESSAGES_FILE, true)
     if not reader then
-        writeDefaultMessages()
-        reader = getFileReader(MESSAGES_FILE, true)
-        if not reader then
-            print("[SafeZoneRadio] ERROR: cannot read " .. MESSAGES_FILE)
-            return
-        end
+        print("[SafeZoneRadio] Radio messages file not found: " .. RADIO_MESSAGES_FILE)
+        return
     end
 
-    SafeZoneRadio.messages = {}
+    radioMessages = {}
+    local currentSection = nil
     local line = reader:readLine()
     while line do
-        line = line:match("^%s*(.-)%s*$") -- trim
+        line = line:match("^%s*(.-)%s*$")
         if line ~= "" then
-            table.insert(SafeZoneRadio.messages, line)
+            local section = line:match("^%[(.+)%]$")
+            if section then
+                currentSection = section:lower()
+                radioMessages[currentSection] = radioMessages[currentSection] or {}
+            elseif currentSection then
+                table.insert(radioMessages[currentSection], line)
+            end
         end
         line = reader:readLine()
     end
     reader:close()
 
-    print("[SafeZoneRadio] Loaded " .. #SafeZoneRadio.messages .. " radio messages from " .. MESSAGES_FILE)
+    for sectionName, msgs in pairs(radioMessages) do
+        print("[SafeZoneRadio] Loaded " .. #msgs .. " messages for [" .. sectionName .. "]")
+    end
 end
 
 -------------------------------------------------
@@ -52,9 +41,11 @@ end
 -------------------------------------------------
 
 function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
+    loadRadioMessages()
+
     local channel = DynamicRadioChannel.new(
         "SafeZone Events",
-        SafeZoneRadio.frequency,
+        SafeZoneConfig.RADIO_FREQUENCY,
         ChannelCategory.Amateur,
         SafeZoneRadio.channelUUID
     )
@@ -64,43 +55,69 @@ function SafeZoneRadio.OnLoadRadioScripts(_scriptManager, _isNewGame)
     DynamicRadio.cache[SafeZoneRadio.channelUUID] = channel
     table.insert(DynamicRadio.scripts, SafeZoneRadio)
 
-    loadMessages()
-
     local bc = SafeZoneRadio.CreateBroadcast()
-    channel:setAiringBroadcast(bc)
+    if bc then
+        channel:setAiringBroadcast(bc)
+    end
 end
 
 function SafeZoneRadio.OnEveryHour(_channel, _gametime, _radio)
     -- обязательный callback для DynamicRadio.scripts (вызывается ванильным ISDynamicRadio)
 end
 
-SafeZoneRadio.placeholders = {
-    ["{x}"]    = "13050",
-    ["{y}"]    = "9750",
-    ["{freq}"] = "95.2",
-}
-
-local function replacePlaceholders(msg)
-    for placeholder, value in pairs(SafeZoneRadio.placeholders) do
-        msg = msg:gsub(placeholder, value)
-    end
-    return msg
-end
-
 function SafeZoneRadio.CreateBroadcast()
+    local msgs = radioMessages["broadcast"]
+    if not msgs or #msgs == 0 then
+        print("[SafeZoneRadio] No broadcast messages loaded")
+        return nil
+    end
+
     local bc = RadioBroadCast.new("SZ-" .. tostring(ZombRand(100000, 999999)), -1, -1)
 
+    local idx = ZombRand(#msgs) + 1
+    local freq = string.format("%.1f", SafeZoneConfig.RADIO_FREQUENCY / 1000)
+    local msg = msgs[idx]
+    msg = msg:gsub("{freq}", freq)
+    msg = msg:gsub("{x}", tostring(SafeZoneConfig.BASE_X))
+    msg = msg:gsub("{y}", tostring(SafeZoneConfig.BASE_Y))
+
+    bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.8, 0.2))
+
+    return bc
+end
+
+--- Создаёт трансляцию для события (вызывается из EventManager)
+function SafeZoneRadio.CreateEventBroadcast(eventTypeName, x, y)
+    local typeToMsg = {
+        buildingstash    = 1,
+        corpswithloot    = 2,
+        foreststash      = 3,
+        airdrop          = 4,
+        abandonedvehicle = 5,
+        camp             = 6,
+        helicoptercrash  = 7,
+    }
+
+    local msgIdx = typeToMsg[eventTypeName] or 1
+    local key = "IGUI_SZ_Event_" .. msgIdx
+    local msg = getText(key, tostring(x), tostring(y))
+
+    local bc = RadioBroadCast.new("SZ-EVT-" .. tostring(ZombRand(100000, 999999)), -1, -1)
     bc:AddRadioLine(RadioLine.new("<bzzt>", 0.5, 0.5, 0.5))
-
-    local msgs = SafeZoneRadio.messages
-    if #msgs > 0 then
-        local msg = replacePlaceholders(msgs[ZombRand(#msgs) + 1])
-        bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.8, 0.2))
-    end
-
+    bc:AddRadioLine(RadioLine.new(msg, 1.0, 0.5, 0.1))
     bc:AddRadioLine(RadioLine.new("<fzzt>", 0.5, 0.5, 0.5))
 
     return bc
+end
+
+--- Отправить сообщение о событии в эфир
+function SafeZoneRadio.broadcastEvent(eventTypeName, x, y)
+    local channel = DynamicRadio.cache[SafeZoneRadio.channelUUID]
+    if not channel then return end
+
+    local bc = SafeZoneRadio.CreateEventBroadcast(eventTypeName, x, y)
+    channel:setAiringBroadcast(bc)
+    print("[SafeZoneRadio] Event broadcast: " .. eventTypeName .. " at " .. x .. "," .. y)
 end
 
 Events.OnLoadRadioScripts.Add(SafeZoneRadio.OnLoadRadioScripts)
