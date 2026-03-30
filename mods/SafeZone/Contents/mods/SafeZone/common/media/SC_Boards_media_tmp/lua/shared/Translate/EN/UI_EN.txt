@@ -1,0 +1,26 @@
+UI_RU = {
+    UI_SC_SelectSq = "Select square",
+    UI_SC_AddBoard = "Create board",
+    UI_SC_MarkerLeft = "Left",
+    UI_SC_MarkerRight = "Right",
+    UI_SC_NotMarker = "No marker",
+    UI_SC_MarkerInfo = "The position of the marker on the screen, if the notice board on the left wall in isometric set the value to ''Left''. If the board on the right wall in isometric set the value to ''Right''. If set to ''Without marker'' then the marker is not will appear for the current board.",
+    UI_SC_LimitInfo = "Limit on the maximum number of advertisements. If the value is 1, then the notice board can only contain one advertisement.",
+    UI_SC_BoardName = "The name of the board that will be displayed at the top. It cannot be changed, only by deleting and adding a notice board.",
+    UI_SC_Create = "Create",
+    UI_SC_StyleBoardInfo = "Board style, you can create your own bulletin board textures, look at the file ''SC_Board_Styles.lua'" "
+    UI_SC_RemoveInfo = "Are you sure you want to delete the message board?\nThis action is not irreversible!",
+    UI_SC_OnlyAdmins = "Admin board",
+    UI_SC_OnlyAdminsAd = "Only the administrator can delete this entry",
+    UI_SC_OnlyAdminsBoard = "When this feature is enabled, only the administrator will be able to post an ad. This will not be available to regular players.",
+    UI_SC_AdRemoved = " <BR> <CENTRE> [ Someone just ripped this ad off the board ]",
+    UI_SC_InfoAtCreate1 = "CHECK",
+    UI_SC_InfoAtCreate2 = "COORDINATES",
+
+    UI_SCBoard_BtnNews = "List of announcements",
+    UI_SCBoard_BtnClose = "Close",
+    UI_SCBoard_BtnOrders = "Task Board",
+    UI_SCBoard_BtnAddNewAds = "Add new ad",
+    UI_SCBoard_BtnRemoveCurrentAd = "Remove current ad",
+    UI_SCBoard_BtnSendToServer = "Attach ad to board",
+}

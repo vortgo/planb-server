@@ -1,0 +1,57 @@
+VERSION = 1,
+
+option SCBoard.EnableBoards
+{
+    type = boolean, default = true,
+	page = SCBoardPage, translation = SCBEnableBoards,
+}
+
+option SCBoard.EnableSpawnMarkers
+{
+    type = boolean, default = true,
+	page = SCBoardPage, translation = SCBEnableSpawnMarkers,
+}
+
+option SCBoard.VisualMsgFromAdmin
+{
+    type = boolean, default = false,
+	page = SCBoardPage, translation = SCBVisualMsgFromAdmin,
+}
+
+option SCBoard.MaxDistanceToBoard
+{
+	type = integer, min = 2, max = 900, default = 5,
+	page = SCBoardPage, translation = SCBMaxDistanceToBoard,
+}
+
+option SCBoard.BackgroundDynamicVisual
+{
+    type = boolean, default = true,
+	page = SCBoardPage, translation = SCBBackgroundDynamicVisual,
+}
+
+option SCBoard.EnableDefaultStyles
+{
+    type = boolean, default = true,
+	page = SCBoardPage, translation = SCBEnableDefaultStyles,
+}
+
+option SCBoard.safeCalculation
+{
+	type = integer, min = 1, max = 200, default = 6,
+	page = SCBoardPage, translation = SCBsafeCalculation,
+}
+
+option SCBoard.AllowPlayersToCreateBoards
+{
+    type = boolean, default = false,
+	page = SCBoardPage, translation = SCBAllowPlayersToCreateBoards,
+}
+
+option SCBoard.LimitPlayersToCreateBoards
+{
+	type = integer, min = 1, max = 200, default = 1,
+	page = SCBoardPage, translation = SCBLimitPlayersToCreateBoards,
+}
+
+

@@ -1,0 +1,19 @@
+{
+    "Sandbox_SCBoardPage": "SC | Boards",
+    "Sandbox_SCBEnableBoards": "Enable Boards",
+    "Sandbox_SCBEnableBoards_tooltip": "After changing this parameter, reconnect to the server.",
+    "Sandbox_SCBEnableSpawnMarkers": "Enable board markers",
+    "Sandbox_SCBEnableSpawnMarkers_tooltip": "Markers will appear at board locations.",
+    "Sandbox_SCBMaxDistanceToBoard": "Maximum distance to the board",
+    "Sandbox_SCBMaxDistanceToBoard_tooltip": "Maximum distance to interact with the board UI.",
+    "Sandbox_SCBBackgroundDynamicVisual": "Create dynamic textures",
+    "Sandbox_SCBBackgroundDynamicVisual_tooltip": "Randomize paper sheets on the board background.",
+    "Sandbox_SCBEnableDefaultStyles": "Enable default board styles",
+    "Sandbox_SCBEnableDefaultStyles_tooltip": "Show default board styles in the creation list.",
+    "Sandbox_SCBsafeCalculation": "Collision calculation restriction",
+    "Sandbox_SCBsafeCalculation_tooltip": "Limits collision checks for dynamic textures.",
+    "Sandbox_SCBVisualMsgFromAdmin": "Highlight admin messages",
+    "Sandbox_SCBVisualMsgFromAdmin_tooltip": "Admin messages on the board will be highlighted.",
+    "Sandbox_SCBAllowPlayersToCreateBoards": "Allow players to create/delete boards",
+    "Sandbox_SCBLimitPlayersToCreateBoards": "Board limit per player"
+}

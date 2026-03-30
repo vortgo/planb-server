@@ -1,0 +1,13 @@
+10872,6453,0
+[Server Rules]
+1. No griefing in safezone
+2. PVP is allowed outside safezone
+3. No cheating or exploiting
+
+[Wipe Schedule]
+Next wipe: April 15
+Full loot wipe, characters preserved
+
+[Events]
+Weekly PVP tournament every Saturday at 20:00 MSK
+Prize: starter kit + vehicle

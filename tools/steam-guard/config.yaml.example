@@ -1,0 +1,52 @@
+# Steam Guard - конфигурация проверки игроков
+# Работает вместе с SafeZone модом для Project Zomboid
+# Copy to config.yaml and fill in your values
+
+steam:
+  api_key: "YOUR_STEAM_API_KEY"        # https://steamcommunity.com/dev/apikey
+  app_id: 108600                       # Project Zomboid
+
+# Пути к файлам PZ сервера
+paths:
+  logs_dir: "/home/pzserver/Zomboid/Logs"                          # папка логов PZ (ищет *_user.txt)
+  commands_file: "/home/pzserver/Zomboid/Lua/SafeZone_commands.txt" # команды для PZ (запись)
+
+rcon:
+  host: "127.0.0.1"
+  port: 27015
+  password: "YOUR_RCON_PASSWORD"
+
+# Правила проверки
+rules:
+  min_hours: 50                        # минимум часов в PZ (0 = не проверять)
+  block_family_sharing: true           # блокировать Family Sharing
+  block_private_profile: true          # блокировать приватные профили
+  kick_delay_seconds: 10               # задержка перед киком
+
+# Сообщения игроку (отправляются перед киком)
+messages:
+  not_enough_hours: "Ваш аккаунт не прошёл проверку.|На сервере требуется минимум {min_hours} часов|в Project Zomboid.|У вас: {hours}ч. Приходите позже!"
+  family_sharing: "Игра через Family Sharing|запрещена на этом сервере.|Необходима собственная копия игры."
+  private_profile: "Ваш Steam профиль приватный.|Откройте настройки приватности Steam:|Настройки приватности: Открытый.|Переподключитесь после изменения."
+  steam_api_error: ""                  # пусто = не кикать при ошибке API
+
+# Белый список Steam Guard
+whitelist_steam:
+  # - "76561198000000001"
+
+# Белый список Anti-Grief
+whitelist_grief:
+  # - "76561198000000001"
+
+# Защита от гриферов
+anti_grief:
+  enabled: true
+  max_removals: 2
+  time_window_seconds: 10
+  action: "ban"
+  message: "Обнаружено массовое удаление объектов.|Вы были забанены за подозрительную активность."
+
+# Логирование
+log:
+  file: "steam-guard.log"
+  level: "info"

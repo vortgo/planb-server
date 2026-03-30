@@ -1,0 +1,7 @@
+name=SafeZone PlanB
+id=SafeZone
+description=Server-side mod for PvP/PvE survival servers. Starter kit system with anti-abuse protection (SteamID + 24h cooldown), admin-placed supply crates, and radio broadcast system for event announcements. Built for Build 42 multiplayer.
+poster=poster.png
+pack=szcrate
+tiledef=tiledefinitions 200
+versionMin=42.14

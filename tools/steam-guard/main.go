@@ -46,7 +46,15 @@ type Config struct {
 		Port     int    `yaml:"port"`
 		Password string `yaml:"password"`
 	} `yaml:"rcon"`
-	Whitelist []string `yaml:"whitelist"`
+	AntiGrief struct {
+		Enabled           bool   `yaml:"enabled"`
+		MaxRemovals       int    `yaml:"max_removals"`
+		TimeWindowSeconds int    `yaml:"time_window_seconds"`
+		Action            string `yaml:"action"`
+		Message           string `yaml:"message"`
+	} `yaml:"anti_grief"`
+	WhitelistSteam []string `yaml:"whitelist_steam"`
+	WhitelistGrief []string `yaml:"whitelist_grief"`
 	Log       struct {
 		File  string `yaml:"file"`
 		Level string `yaml:"level"`
@@ -101,8 +109,17 @@ func loadConfig(path string) error {
 	return yaml.Unmarshal(data, &cfg)
 }
 
-func isWhitelisted(username, steamID string) bool {
-	for _, entry := range cfg.Whitelist {
+func isWhitelistedSteam(username, steamID string) bool {
+	for _, entry := range cfg.WhitelistSteam {
+		if entry == steamID || entry == username {
+			return true
+		}
+	}
+	return false
+}
+
+func isWhitelistedGrief(username, steamID string) bool {
+	for _, entry := range cfg.WhitelistGrief {
 		if entry == steamID || entry == username {
 			return true
 		}
@@ -262,7 +279,7 @@ func sendMessageAndKick(username, message string) {
 
 	// Kick via RCON (server-side, cannot be bypassed)
 	logger.Printf("ACTION: RCON kick %s", username)
-	resp, err := rconExec(fmt.Sprintf("kick \"%s\"", username))
+	resp, err := rconExec(fmt.Sprintf("kickuser %s", username))
 	if err != nil {
 		logger.Printf("ERROR: RCON kick failed: %v", err)
 	} else {
@@ -281,7 +298,7 @@ func formatMessage(template string, vars map[string]string) string {
 func checkPlayer(username, steamID string) {
 	logger.Printf("Checking player: %s (SteamID: %s)", username, steamID)
 
-	if isWhitelisted(username, steamID) {
+	if isWhitelistedSteam(username, steamID) {
 		logger.Printf("PASS: %s is whitelisted", username)
 		return
 	}
@@ -505,6 +522,235 @@ func watchAndTail(logsDir string) {
 	}
 }
 
+// --- Anti-grief: monitor map.txt for mass object removal ---
+
+// Track removal timestamps per player
+var griefTracker = make(map[string][]time.Time) // username -> list of removal times
+var griefKicked = make(map[string]bool)          // already kicked this session
+
+// Find latest *_map.txt
+func findLatestMapLog(logsDir string) string {
+	var best string
+	var bestName string
+
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), "_map.txt") {
+			if entry.Name() > bestName {
+				bestName = entry.Name()
+				best = filepath.Join(logsDir, entry.Name())
+			}
+		}
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "logs_") {
+			subDir := filepath.Join(logsDir, entry.Name())
+			files, err := os.ReadDir(subDir)
+			if err != nil {
+				continue
+			}
+			for _, f := range files {
+				if !f.IsDir() && strings.HasSuffix(f.Name(), "_map.txt") {
+					if f.Name() > bestName {
+						bestName = f.Name()
+						best = filepath.Join(subDir, f.Name())
+					}
+				}
+			}
+		}
+	}
+	return best
+}
+
+// Parse map.txt line: [24-03-26 08:57:04.219] 76561198034616829 "Kosmonavt" removed IsoObject (...) at 12274,6932,0.
+func parseMapRemoval(line string) (steamID, username string, ok bool) {
+	if !strings.Contains(line, "\" removed ") {
+		return "", "", false
+	}
+
+	idx := strings.Index(line, "] ")
+	if idx < 0 {
+		return "", "", false
+	}
+	rest := line[idx+2:]
+	parts := strings.SplitN(rest, " ", 2)
+	if len(parts) < 2 {
+		return "", "", false
+	}
+	steamID = parts[0]
+
+	q1 := strings.Index(rest, "\"")
+	if q1 < 0 {
+		return "", "", false
+	}
+	q2 := strings.Index(rest[q1+1:], "\"")
+	if q2 < 0 {
+		return "", "", false
+	}
+	username = rest[q1+1 : q1+1+q2]
+	return steamID, username, true
+}
+
+func trackRemoval(steamID, username string) {
+	if griefKicked[username] {
+		return
+	}
+
+	now := time.Now()
+	window := time.Duration(cfg.AntiGrief.TimeWindowSeconds) * time.Second
+
+	griefTracker[username] = append(griefTracker[username], now)
+	cutoff := now.Add(-window)
+	times := griefTracker[username]
+	start := 0
+	for start < len(times) && times[start].Before(cutoff) {
+		start++
+	}
+	griefTracker[username] = times[start:]
+
+	count := len(griefTracker[username])
+	if count >= cfg.AntiGrief.MaxRemovals {
+		griefKicked[username] = true
+		logger.Printf("GRIEF: %s (SteamID: %s) — %d removals in %ds! Action: %s",
+			username, steamID, count, cfg.AntiGrief.TimeWindowSeconds, cfg.AntiGrief.Action)
+
+		switch cfg.AntiGrief.Action {
+		case "kick":
+			go sendMessageAndKick(username, cfg.AntiGrief.Message)
+		case "ban":
+			go func(u, sid string, c int) {
+				reason := fmt.Sprintf("Anti-grief: %d removals in %ds", c, cfg.AntiGrief.TimeWindowSeconds)
+				logger.Printf("ACTION: RCON banid %s — %s", sid, reason)
+				rconExec(fmt.Sprintf("banuser %s", u))
+				// Collect removed objects for restore
+				collectAndRestore(sid, u)
+			}(username, steamID, count)
+		}
+	}
+}
+
+// Parse all removed objects by a player from map.txt, write restore commands
+func collectAndRestore(steamID, username string) {
+	latest := findLatestMapLog(cfg.Paths.LogsDir)
+	if latest == "" {
+		logger.Printf("RESTORE: no map.txt found")
+		return
+	}
+
+	file, err := os.Open(latest)
+	if err != nil {
+		logger.Printf("RESTORE: cannot open %s: %v", latest, err)
+		return
+	}
+	defer file.Close()
+
+	// Collect all "removed" lines for this player
+	var restoreItems []string
+	scanner := bufio.NewScanner(file)
+	searchPrefix := fmt.Sprintf("%s \"%s\" removed ", steamID, username)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		idx := strings.Index(line, "] ")
+		if idx < 0 {
+			continue
+		}
+		rest := line[idx+2:]
+		if !strings.HasPrefix(rest, searchPrefix) {
+			continue
+		}
+
+		// Extract sprite name: removed IsoObject (sprite_name) at x,y,z.
+		p1 := strings.Index(rest, "(")
+		p2 := strings.Index(rest, ")")
+		a := strings.Index(rest, " at ")
+		if p1 < 0 || p2 < 0 || a < 0 {
+			continue
+		}
+		sprite := rest[p1+1 : p2]
+		coords := strings.TrimSuffix(rest[a+4:], ".")
+		restoreItems = append(restoreItems, fmt.Sprintf("restore %s %s", sprite, coords))
+	}
+
+	if len(restoreItems) == 0 {
+		logger.Printf("RESTORE: no objects to restore for %s", username)
+		return
+	}
+
+	logger.Printf("RESTORE: writing %d restore commands for %s", len(restoreItems), username)
+
+	f, err := os.OpenFile(cfg.Paths.CommandsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		logger.Printf("RESTORE: cannot open commands file: %v", err)
+		return
+	}
+	defer f.Close()
+
+	for _, cmd := range restoreItems {
+		f.WriteString(cmd + "\n")
+	}
+}
+
+func watchMapLog(logsDir string) {
+	var currentPath string
+	var file *os.File
+	var reader *bufio.Reader
+
+	for {
+		latest := findLatestMapLog(logsDir)
+
+		if latest != "" && latest != currentPath {
+			if file != nil {
+				file.Close()
+			}
+
+			var err error
+			file, err = os.Open(latest)
+			if err != nil {
+				logger.Printf("ERROR: cannot open map log %s: %v", latest, err)
+				time.Sleep(10 * time.Second)
+				continue
+			}
+
+			if currentPath == "" {
+				file.Seek(0, io.SeekEnd)
+				logger.Printf("Anti-grief tailing (from end): %s", latest)
+			} else {
+				logger.Printf("Anti-grief switched to: %s", latest)
+			}
+
+			currentPath = latest
+			reader = bufio.NewReader(file)
+		}
+
+		if reader == nil {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		hasData := false
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				break
+			}
+			hasData = true
+			line = strings.TrimSpace(line)
+			if steamID, username, ok := parseMapRemoval(line); ok {
+				if !isWhitelistedGrief(username, steamID) {
+					trackRemoval(steamID, username)
+				}
+			}
+		}
+
+		if !hasData {
+			time.Sleep(1 * time.Second)
+		}
+	}
+}
+
 func main() {
 	configPath := "config.yaml"
 	if len(os.Args) > 1 {
@@ -533,7 +779,7 @@ func main() {
 	logger.Printf("  Min hours: %d", cfg.Rules.MinHours)
 	logger.Printf("  Block family sharing: %v", cfg.Rules.BlockFamilySharing)
 	logger.Printf("  Block private profile: %v", cfg.Rules.BlockPrivateProfile)
-	logger.Printf("  Whitelist: %d entries", len(cfg.Whitelist))
+	logger.Printf("  Whitelist steam: %d, grief: %d", len(cfg.WhitelistSteam), len(cfg.WhitelistGrief))
 
 	if cfg.Steam.APIKey == "" || cfg.Steam.APIKey == "YOUR_STEAM_API_KEY_HERE" {
 		logger.Fatal("Steam API key not configured! Get one at https://steamcommunity.com/dev/apikey")
@@ -544,6 +790,11 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go watchAndTail(cfg.Paths.LogsDir)
+
+	if cfg.AntiGrief.Enabled {
+		logger.Printf("  Anti-grief: %d removals / %ds = kick", cfg.AntiGrief.MaxRemovals, cfg.AntiGrief.TimeWindowSeconds)
+		go watchMapLog(cfg.Paths.LogsDir)
+	}
 
 	<-sigChan
 	logger.Printf("Steam Guard stopped")

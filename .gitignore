@@ -1,6 +1,21 @@
-# Compiled Java classes (extracted from JAR for analysis)
+# PZ reference classes
 zombie/
 
-# Go binary
+# Screenshots archive
+tools/screensh/
+
+# Go binaries & logs
 tools/steam-guard/steam-guard
+tools/steam-guard/steam-guard-linux
 tools/steam-guard/steam-guard.log
+tools/steam-guard/config.yaml
+
+# Deploy secrets
+tools/deploy/deploy.env
+
+# Active configs (not examples)
+config/SafeZone_admin_board.txt
+
+# OS & IDE
+.DS_Store
+.idea/

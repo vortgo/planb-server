@@ -1,0 +1,11 @@
+"workshopitem"
+{
+    "appid"           "108600"
+    "publishedfileid" "3683486055"
+    "contentfolder"   "/Users/viktor.pelih/projects/planb-server/mods/SafeZone/Contents"
+    "previewfile"     "/Users/viktor.pelih/projects/planb-server/mods/SafeZone/preview.png"
+    "title"           "SafeZone PlanB"
+    "description"     "PlanB server mod: SafeZone, custom events, vehicles, starter kit"
+    "changenote"      "v2.0 - Clean rebuild, remove custom map, add config system"
+    "visibility"      "2"
+}

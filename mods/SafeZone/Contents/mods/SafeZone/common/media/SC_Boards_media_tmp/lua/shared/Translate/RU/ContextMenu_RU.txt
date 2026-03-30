@@ -1,0 +1,5 @@
+ContextMenu_RU = {
+    ContextMenu_CreateOBoard = "—оздать доску объ€влений",
+    ContextMenu_RemoveOBoard = "”далить доску объ€влений",
+    ContextMenu_ShowBoard = "ѕосмотреть на доску объ€влений",
+}

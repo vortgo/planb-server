@@ -1,0 +1,19 @@
+{
+    "Sandbox_SCBoardPage": "SC | Доски",
+    "Sandbox_SCBEnableBoards": "Включить доски",
+    "Sandbox_SCBEnableBoards_tooltip": "После изменения переподключитесь к серверу.",
+    "Sandbox_SCBEnableSpawnMarkers": "Включить маркеры досок",
+    "Sandbox_SCBEnableSpawnMarkers_tooltip": "На месте досок появятся маркеры.",
+    "Sandbox_SCBMaxDistanceToBoard": "Максимальная дистанция до доски",
+    "Sandbox_SCBMaxDistanceToBoard_tooltip": "Максимальная дистанция для взаимодействия с доской.",
+    "Sandbox_SCBBackgroundDynamicVisual": "Динамические текстуры",
+    "Sandbox_SCBBackgroundDynamicVisual_tooltip": "Случайные листки бумаги на фоне доски.",
+    "Sandbox_SCBEnableDefaultStyles": "Стандартные стили досок",
+    "Sandbox_SCBEnableDefaultStyles_tooltip": "Показывать стандартные стили при создании.",
+    "Sandbox_SCBsafeCalculation": "Ограничение расчёта коллизий",
+    "Sandbox_SCBsafeCalculation_tooltip": "Лимит проверок коллизий для динамических текстур.",
+    "Sandbox_SCBVisualMsgFromAdmin": "Подсветка сообщений админа",
+    "Sandbox_SCBVisualMsgFromAdmin_tooltip": "Сообщения админа на доске будут подсвечены.",
+    "Sandbox_SCBAllowPlayersToCreateBoards": "Разрешить игрокам создавать/удалять доски",
+    "Sandbox_SCBLimitPlayersToCreateBoards": "Лимит досок на игрока"
+}
