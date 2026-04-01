@@ -23,35 +23,8 @@ end
 
 local maintainGenTicks = 0
 
-local function SZ_MaintainInfiniteGenerators()
-    if not SZ_InfiniteGens then return end
-
-    maintainGenTicks = maintainGenTicks + 1
-    if maintainGenTicks < 5 then return end
-    maintainGenTicks = 0
-
-    local maxFuel = 10.0
-    local maxCondition = 100
-    for i = #SZ_InfiniteGens, 1, -1 do
-        local gen = SZ_InfiniteGens[i]
-        if not gen or gen:getObjectIndex() == -1 then
-            table.remove(SZ_InfiniteGens, i)
-        else
-            local md = gen:getModData()
-            if md and md._isFuelInfinite then
-                local fuel = gen:getFuel()
-                if fuel < maxFuel then
-                    gen:setFuel(maxFuel)
-                end
-                gen:setCondition(maxCondition)
-                if not gen:isActivated() then
-                    gen:setActivated(true)
-                end
-                gen:sync()
-            end
-        end
-    end
-end
+-- Maintenance is handled server-side in infinite_gen.lua
+-- Client only needs the list for context menu and pickup protection
 
 
 -- Block non-admin from picking up infinite generators
@@ -158,6 +131,5 @@ local function SZ_OnLoadGridsquare(square)
     end
 end
 
-Events.EveryOneMinute.Add(SZ_MaintainInfiniteGenerators)
 Events.LoadGridsquare.Add(SZ_OnLoadGridsquare)
 Events.OnFillWorldObjectContextMenu.Add(SZ_GenWorldContextMenu)

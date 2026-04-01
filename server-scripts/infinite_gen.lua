@@ -95,13 +95,11 @@ end
 local VALIDATE_INTERVAL_MS = 60 * 1000
 local lastValidateTime = 0
 
-local function validateGenerators()
+local function maintainGenerators()
     local now = getTimestampMs()
     if now - lastValidateTime < VALIDATE_INTERVAL_MS then return end
     lastValidateTime = now
 
-    -- Check all loaded cells for generators with _isFuelInfinite
-    -- that are NOT in our authorized list
     local cell = getCell()
     if not cell then return end
 
@@ -112,12 +110,20 @@ local function validateGenerators()
             local gen = findGeneratorAt(x, y, z)
             if gen then
                 local data = gen:getModData()
-                -- Re-enforce the flag in case client tried to tamper
-                if data and not data['_isFuelInfinite'] then
-                    data['_isFuelInfinite'] = true
-                    gen:setFuel(10)
+                if data then
+                    -- Re-enforce flag if tampered
+                    if not data['_isFuelInfinite'] then
+                        data['_isFuelInfinite'] = true
+                        gen:transmitModData()
+                    end
+                    -- Maintain fuel, condition, activated
+                    if gen:getFuel() < 10 then
+                        gen:setFuel(10)
+                    end
                     gen:setCondition(100)
-                    gen:transmitModData()
+                    if not gen:isActivated() then
+                        gen:setActivated(true)
+                    end
                 end
             end
         end
@@ -154,4 +160,4 @@ local function onServerStarted()
 end
 
 Events.OnServerStarted.Add(onServerStarted)
-Events.OnTick.Add(validateGenerators)
+Events.OnTick.Add(maintainGenerators)

@@ -30,6 +30,9 @@ return {
     -- Anticheat
     "anticheat.lua",
 
+    -- Audit logging (map/item changes with player attribution)
+    "audit_log.lua",
+
     -- Library, Stats, Admin Board
     "library.lua",
     "stats.lua",

@@ -24,6 +24,7 @@ deploy_config() {
     echo ">>> Deploying server config..."
     scp "$CONFIG_DIR/server/servertest.ini" "$SERVER:$REMOTE_SERVER_DIR/"
     scp "$CONFIG_DIR/server/servertest_SandboxVars.lua" "$SERVER:$REMOTE_SERVER_DIR/"
+    scp "$CONFIG_DIR/SafeZone_config.example.lua" "$SERVER:$REMOTE_LUA_DIR/SafeZone_config.lua"
     echo "    Done."
 }
 
@@ -31,6 +32,7 @@ deploy_messages() {
     echo ">>> Deploying message files..."
     scp "$CONFIG_DIR/SafeZone_event_messages.example.txt" "$SERVER:$REMOTE_LUA_DIR/SafeZone_event_messages.txt"
     scp "$CONFIG_DIR/SafeZone_radio_messages.example.txt" "$SERVER:$REMOTE_LUA_DIR/SafeZone_radio_messages.txt"
+    scp "$CONFIG_DIR/SafeZone_admin_board.example.txt" "$SERVER:$REMOTE_LUA_DIR/SafeZone_admin_board.txt"
     echo "    Done."
 }
 

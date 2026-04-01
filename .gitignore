@@ -19,3 +19,10 @@ config/SafeZone_admin_board.txt
 # OS & IDE
 .DS_Store
 .idea/
+/.playwright-mcp/console-2026-03-31T06-44-24-530Z.log
+/.playwright-mcp/console-2026-04-01T08-58-24-527Z.log
+/.playwright-mcp/console-2026-04-01T08-58-35-062Z.log
+/.playwright-mcp/console-2026-04-01T08-58-52-507Z.log
+/.playwright-mcp/page-2026-04-01T08-58-26-119Z.yml
+/.playwright-mcp/page-2026-04-01T08-58-36-290Z.yml
+/.playwright-mcp/page-2026-04-01T08-58-53-503Z.yml
